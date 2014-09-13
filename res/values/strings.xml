@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="hello">Hello World, MainActivity!</string>
-    <string name="app_name">MyApp5</string>
-
+    <string name="app_name">Flashlight Fixer</string>
+	<string name="xposed_description">Fix flashlight for all apps</string>
+    
 </resources>
