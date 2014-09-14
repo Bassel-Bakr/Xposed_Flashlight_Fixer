@@ -112,7 +112,7 @@ public class MainActivity extends PreferenceActivity implements Preference.OnPre
 		SharedPreferences mPrefs = getSharedPreferences("prefs", MODE_WORLD_READABLE);
 		mPrefs.edit().putString(p1.getKey(), (String)p2).commit();
 		String mValue = (String) p2;
-		if (mValue == null || mValue.length() < 2)
+		if (mValue == null || mValue.length() < 1)
 		{
 			mPrefs.edit().remove(p1.getKey()).commit();
 		}
