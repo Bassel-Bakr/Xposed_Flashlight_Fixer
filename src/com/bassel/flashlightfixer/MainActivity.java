@@ -17,17 +17,16 @@
 package com.bassel.flashlightfixer;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.preference.EditTextPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
-import android.util.Log;
-import com.bassel.cmd.Cmd;
-import java.io.StringReader;
-import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserFactory;
+import android.preference.PreferenceManager;
+import android.text.InputType;
 
-public class MainActivity extends PreferenceActivity implements Preference.OnPreferenceClickListener
+public class MainActivity extends PreferenceActivity implements Preference.OnPreferenceClickListener, Preference.OnPreferenceChangeListener
 {
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
@@ -35,6 +34,45 @@ public class MainActivity extends PreferenceActivity implements Preference.OnPre
 		// TODO: Implement this method
 		super.onCreate(savedInstanceState);
 		setPreferenceScreen(getPreferenceManager().createPreferenceScreen(this));
+
+		EditTextPreference mFlashDevice = new EditTextPreference(this)
+		{{
+				setTitle("Flash device");
+				setSummary("If it worked, report it to me to hardcode it");
+				setKey("key_flash_device");
+				setDialogMessage("Empty to reset");
+				setOnPreferenceChangeListener(MainActivity.this);
+			}};
+
+		EditTextPreference mSupportedFlashModes = new EditTextPreference(this)
+		{{
+				setTitle("Supported flash modes");
+				setSummary("If it worked, report it to me to hardcode it");
+				setKey("key_supported_flash_modes");
+				setOnPreferenceChangeListener(MainActivity.this);
+				setDialogMessage("Separate each mode with a comma: (on, off, auto, torch, red-eye)\nEmpty to reset");
+			}};
+
+		EditTextPreference mAutoFocusDelay = new EditTextPreference(this)
+		{{
+				setTitle("Auto focus delay");
+				setSummary("Delay between auto flash and auto focus");
+				setKey("key_auto_focus_delay");
+				setDialogMessage("Milliseconds, empty to reset");
+				getEditText().setInputType(InputType.TYPE_CLASS_NUMBER);
+				setOnPreferenceChangeListener(MainActivity.this);
+			}};
+
+		EditTextPreference mInfiniteFocusDelay = new EditTextPreference(this)
+		{{
+				setTitle("Infinite focus delay");
+				setSummary("Delay between auto flash and infinite or no focus");
+				setKey("key_infinite_focus_delay");
+				setDialogMessage("Milliseconds, empty to reset");
+				getEditText().setInputType(InputType.TYPE_CLASS_NUMBER);
+				setOnPreferenceChangeListener(MainActivity.this);
+			}};
+
 		Preference mContact = new Preference(this)
 		{{
 				setTitle("Contact me");
@@ -59,9 +97,34 @@ public class MainActivity extends PreferenceActivity implements Preference.OnPre
 				setOnPreferenceClickListener(MainActivity.this);
 			}};
 
+		getPreferenceScreen().addPreference(mFlashDevice);
+		getPreferenceScreen().addPreference(mSupportedFlashModes);
+		getPreferenceScreen().addPreference(mAutoFocusDelay);
+		getPreferenceScreen().addPreference(mInfiniteFocusDelay);
 		getPreferenceScreen().addPreference(mContact);
 		getPreferenceScreen().addPreference(mUituner);
 		getPreferenceScreen().addPreference(mDonate);
+	}
+
+	@Override
+	public boolean onPreferenceChange(Preference p1, Object p2)
+	{
+		// TODO: Implement this method
+		SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+		String mValue = (String) p2;
+		if (mValue == null || mValue.length() < 2)
+		{
+			mPrefs.edit().remove(p1.getKey()).commit();
+			return true;
+		}
+		switch (p1.getKey())
+		{
+			case "key_flash_device":
+				Flash.setFlashDevice(mValue);
+				Flash.fixGroup();
+				break;
+		}
+		return true;
 	}
 
 	@Override
