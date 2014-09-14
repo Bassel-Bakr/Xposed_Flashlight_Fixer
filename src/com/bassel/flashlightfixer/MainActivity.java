@@ -115,14 +115,6 @@ public class MainActivity extends PreferenceActivity implements Preference.OnPre
 		if (mValue == null || mValue.length() < 2)
 		{
 			mPrefs.edit().remove(p1.getKey()).commit();
-			return true;
-		}
-		switch (p1.getKey())
-		{
-			case "key_flash_device":
-				Flash.setFlashDevice(mValue);
-				Flash.fixGroup();
-				break;
 		}
 		return true;
 	}
