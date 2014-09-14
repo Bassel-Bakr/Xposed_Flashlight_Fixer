@@ -30,6 +30,8 @@ public class XposedMod implements IXposedHookZygoteInit
 	@Override
 	public void initZygote(IXposedHookZygoteInit.StartupParam startupParam) throws Throwable
 	{
+		// Reload our preferences
+		Flash.getPrefs().reload();
 
 		// Called when an app checks for flashlight availability
 		XposedHelpers.findAndHookMethod("android.app.ApplicationPackageManager", null, "hasSystemFeature", String.class, new XC_MethodReplacement()

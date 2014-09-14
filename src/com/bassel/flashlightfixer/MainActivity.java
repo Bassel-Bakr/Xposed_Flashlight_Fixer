@@ -33,7 +33,7 @@ public class MainActivity extends PreferenceActivity implements Preference.OnPre
 		// TODO: Implement this method
 		super.onCreate(savedInstanceState);
 		setPreferenceScreen(getPreferenceManager().createPreferenceScreen(this));
-
+		
 		EditTextPreference mFlashDevice = new EditTextPreference(this)
 		{{
 				setTitle("Flash device");
