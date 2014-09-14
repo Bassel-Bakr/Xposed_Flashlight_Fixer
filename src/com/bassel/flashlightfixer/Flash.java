@@ -20,6 +20,7 @@ import android.hardware.Camera;
 import com.bassel.cmd.Cmd;
 import com.bassel.flashlightfixer.Flash;
 import de.robv.android.xposed.XSharedPreferences;
+import de.robv.android.xposed.XposedBridge;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -28,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
-import de.robv.android.xposed.XposedBridge;
 
 public class Flash
 {
@@ -47,8 +47,9 @@ public class Flash
 	{
 		XposedBridge.log("Static initialization");
 		// Get shared preferences
-		sPrefs = new XSharedPreferences("com.bassel.flashlightfixer");
+		sPrefs = new XSharedPreferences(Flash.class.getPackage().getName(), "prefs");
 		sPrefs.makeWorldReadable();
+
 		// Check board name to use the right flash device
 		sBoardName = getBoardName();
 		if (sPrefs.contains(KEY_FLASH_DEVICE))
@@ -89,6 +90,7 @@ public class Flash
 
 	public static XSharedPreferences getPrefs()
 	{
+		sPrefs.reload();
 		return sPrefs;
 	}
 
@@ -206,7 +208,7 @@ public class Flash
 	// Return current flash mode set by the camera or flashlight app
 	static String getFlashMode()
 	{
-		if(sFlashMode == null) return "off";
+		if (sFlashMode == null) return "off";
 		return sFlashMode;
 	}
 

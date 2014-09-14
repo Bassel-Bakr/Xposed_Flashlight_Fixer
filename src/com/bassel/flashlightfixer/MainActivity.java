@@ -23,7 +23,6 @@ import android.os.Bundle;
 import android.preference.EditTextPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
-import android.preference.PreferenceManager;
 import android.text.InputType;
 
 public class MainActivity extends PreferenceActivity implements Preference.OnPreferenceClickListener, Preference.OnPreferenceChangeListener
@@ -110,7 +109,8 @@ public class MainActivity extends PreferenceActivity implements Preference.OnPre
 	public boolean onPreferenceChange(Preference p1, Object p2)
 	{
 		// TODO: Implement this method
-		SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+		SharedPreferences mPrefs = getSharedPreferences("prefs", MODE_WORLD_READABLE);
+		mPrefs.edit().putString(p1.getKey(), (String)p2).commit();
 		String mValue = (String) p2;
 		if (mValue == null || mValue.length() < 2)
 		{
