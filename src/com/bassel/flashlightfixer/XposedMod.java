@@ -137,12 +137,12 @@ public class XposedMod implements Constants, IXposedHookZygoteInit
 				protected Object replaceHookedMethod(MethodHookParam param) throws IllegalAccessException, IllegalArgumentException, NullPointerException, InvocationTargetException
 				{
 					// If auto-focus is off, turn flash on and let the camera adapt to flashlight for 2.5 seconds
-					if (Flash.getPrefs().getBoolean(KEY_HOOK_FLASH, false) && Flash.isAuto() && !Flash.isOn())
+					if (Flash.getPrefs().getBoolean(KEY_HOOK_INFINITE_FOCUS, false) && Flash.isAuto() && !Flash.isOn())
 					{
-						Flash.on();
+						if(Flash.getPrefs().getBoolean(KEY_HOOK_FLASH, false)) Flash.on();
 						try
 						{
-							if (Flash.getPrefs().getBoolean(KEY_HOOK_INFINITE_FOCUS, false)) Thread.sleep(Integer.valueOf(Flash.getPrefs().getString(Flash.KEY_INFINITE_FOCUS_DELAY, "0")));
+							Thread.sleep(Integer.valueOf(Flash.getPrefs().getString(Flash.KEY_INFINITE_FOCUS_DELAY, "0")));
 						}
 						catch (InterruptedException e)
 						{e.printStackTrace();}

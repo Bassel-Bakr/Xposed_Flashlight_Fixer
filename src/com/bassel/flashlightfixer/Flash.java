@@ -40,7 +40,7 @@ public class Flash implements Constants
 
 	static
 	{
-		if  (BuildConfig.DEBUG)XposedBridge.log("Static initialization");
+		if  (BuildConfig.DEBUG) XposedBridge.log("Static initialization");
 		// Get shared preferences
 		sPrefs = new XSharedPreferences(Flash.class.getPackage().getName(), "prefs");
 		sPrefs.makeWorldReadable();

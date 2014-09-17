@@ -16,6 +16,7 @@
 
 package com.bassel.flashlightfixer;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
@@ -25,9 +26,15 @@ import android.preference.EditTextPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
 import android.text.InputType;
+import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.TableRow.LayoutParams;
+import com.bassel.cmd.Cmd;
 
 public class MainActivity extends PreferenceActivity implements Constants, Preference.OnPreferenceClickListener, Preference.OnPreferenceChangeListener
 {
+	private SharedPreferences mPrefs;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
@@ -35,10 +42,12 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 		super.onCreate(savedInstanceState);
 		setPreferenceScreen(getPreferenceManager().createPreferenceScreen(this));
 
+		mPrefs = getSharedPreferences("prefs", MODE_WORLD_READABLE);
+
 		CheckBoxPreference mHookFlash = new CheckBoxPreference(this)
 		{{
-				setTitle("Hook flash");
-				setSummary("Change default flash toggling method");
+				setTitle("Use flashlight sysfs path");
+				setSummary("Use flashlight sysfs path instead of camera interface");
 				setKey(KEY_HOOK_FLASH);
 				setDefaultValue(false);
 				setOnPreferenceChangeListener(MainActivity.this);
@@ -48,7 +57,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 		CheckBoxPreference mHookCameraParams = new CheckBoxPreference(this)
 		{{
 				setTitle("Hook camera params");
-				setSummary("If (Camera + Flash = force close)!");
+				setSummary("If (Camera + Flash = crash!)");
 				setKey(KEY_HOOK_CAMERA_PARAMS);
 				setOnPreferenceChangeListener(MainActivity.this);
 				getPreferenceScreen().addPreference(this);
@@ -57,7 +66,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 		CheckBoxPreference mHookFlashDevice = new CheckBoxPreference(this)
 		{{
 				setTitle("Hook flash device");
-				setSummary("Change default flash device");
+				setSummary("Change default flash device / sysfs path");
 				setKey(KEY_HOOK_FLASH_DEVICE);
 				setOnPreferenceChangeListener(MainActivity.this);
 				getPreferenceScreen().addPreference(this);
@@ -72,7 +81,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setOnPreferenceChangeListener(MainActivity.this);
 				getPreferenceScreen().addPreference(this);
 			}};
-		
+
 		CheckBoxPreference mHookFlashModes = new CheckBoxPreference(this)
 		{{
 				setTitle("Hook flash modes");
@@ -88,7 +97,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setSummary("If it worked, report it to me to hardcode it");
 				setKey(KEY_SUPPORTED_FLASH_MODES);
 				setOnPreferenceChangeListener(MainActivity.this);
-				setDialogMessage("Separate each mode with a comma: (on, off, auto, torch, red-eye)\nEmpty to reset");
+				setDialogMessage("Separate each mode with a comma: (on, off, auto, torch, red-eye)");
 				getPreferenceScreen().addPreference(this);
 			}};
 
@@ -106,7 +115,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setTitle("Auto focus delay");
 				setSummary("Delay between auto flash and auto focus");
 				setKey(KEY_AUTO_FOCUS_DELAY);
-				setDialogMessage("Milliseconds, empty to reset");
+				setDialogMessage("In milliseconds (1 second = 1000 milliseconds):");
 				getEditText().setInputType(InputType.TYPE_CLASS_NUMBER);
 				setOnPreferenceChangeListener(MainActivity.this);
 				getPreferenceScreen().addPreference(this);
@@ -126,7 +135,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setTitle("Infinite focus delay");
 				setSummary("Delay between auto flash and infinite or no focus");
 				setKey(KEY_INFINITE_FOCUS_DELAY);
-				setDialogMessage("Milliseconds, empty to reset");
+				setDialogMessage("In milliseconds (1 second = 1000 milliseconds):");
 				getEditText().setInputType(InputType.TYPE_CLASS_NUMBER);
 				setOnPreferenceChangeListener(MainActivity.this);
 				getPreferenceScreen().addPreference(this);
@@ -162,10 +171,10 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 		mHookFlashDevice.setDependency(KEY_HOOK_FLASH);
 		mFlashDevice.setDependency(KEY_HOOK_FLASH_DEVICE);
 
-		//mHookFlashModes.setDependency(KEY_HOOK_FLASH);
 		mSupportedFlashModes.setDependency(KEY_HOOK_FLASH_MODES);
 
 		mAutoFocusDelay.setDependency(KEY_HOOK_AUTO_FOCUS);
+		mHookInfiniteFocus.setDependency(KEY_HOOK_FLASH);
 		mInfiniteFocusDelay.setDependency(KEY_HOOK_INFINITE_FOCUS);
 	}
 
@@ -173,9 +182,8 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 	public boolean onPreferenceChange(Preference p1, Object p2)
 	{
 		// TODO: Implement this method
-		SharedPreferences mPrefs = getSharedPreferences("prefs", MODE_WORLD_READABLE);
 		if (p2 instanceof String) mPrefs.edit().putString(p1.getKey(), (String)p2).commit();
-		else if (p2 instanceof Boolean || p2 instanceof Boolean) mPrefs.edit().putBoolean(p1.getKey(), (boolean)p2).commit();
+		else if (p2 instanceof Boolean) mPrefs.edit().putBoolean(p1.getKey(), (boolean)p2).commit();
 		return true;
 	}
 
@@ -189,8 +197,23 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 			case "key_contact":
 				mIntent.setAction(Intent.ACTION_VIEW)
 					.setData(Uri.parse("mailto:basselbakr@gmail.com"))
-					.putExtra(Intent.EXTRA_SUBJECT, "Flashlight Fixer");
-				startActivity(mIntent);
+					.putExtra(Intent.EXTRA_SUBJECT, "Flashlight Fixer [board name = " + Cmd.SH.ex("getprop ro.product.board").getString() + "]")
+					.putExtra(Intent.EXTRA_TEXT, "Flashlight sysfs path = " + Cmd.SH.ex("busybox find /sys -group camera 2> /dev/null").getString() + "\n\n");
+				try
+				{startActivity(mIntent);}
+				catch (Exception e)
+				{
+					EditText mEt = new EditText(this);
+					mEt.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
+					mEt.setText(
+						"Board name = " + Cmd.SH.ex("getprop ro.product.board").getString() +
+						"\nFlashlight sysfs path = " + Cmd.SH.ex("busybox find /sys -group camera 2> /dev/null").getString()
+					);
+					new AlertDialog.Builder(this)
+						.setTitle("May I have some data")
+						.setView(mEt)
+						.show();
+				}
 				break;
 
 			case "key_uituner":
