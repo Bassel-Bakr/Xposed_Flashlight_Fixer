@@ -30,43 +30,104 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 
-public class Flash
+public class Flash implements Constants
 {
-	static final String
-	KEY_FLASH_DEVICE = "key_flash_device",
-	KEY_SUPPORTED_FLASH_MODES = "key_supported_flash_modes",
-	KEY_AUTO_FOCUS_DELAY = "key_auto_focus_delay",
-	KEY_INFINITE_FOCUS_DELAY = "key_infinite_focus_delay";
 	private static XSharedPreferences sPrefs;
-	private static String sFlashDevice, sFlashMode, sBoardName;
-	private static List<String> sFlashModes;
+	private static String sFlashDevice, sStandardFlashDevice, sFlashMode, sBoardName;
+	private static List<String> sFlashModes, sStandardFlashModes;
 	private static FileWriter sFileWriter;
 	private static boolean sOn;
 
 	static
 	{
-		XposedBridge.log("Static initialization");
+		if  (BuildConfig.DEBUG)XposedBridge.log("Static initialization");
 		// Get shared preferences
 		sPrefs = new XSharedPreferences(Flash.class.getPackage().getName(), "prefs");
 		sPrefs.makeWorldReadable();
 
 		// Check board name to use the right flash device
 		sBoardName = getBoardName();
-		if (sPrefs.contains(KEY_FLASH_DEVICE))
+		sStandardFlashDevice = getStandardFlashDevice();
+		sStandardFlashModes = getStandardFlashModes();
+
+		if (getPrefs().getBoolean(KEY_HOOK_FLASH_DEVICE, true) && getPrefs().getString(KEY_FLASH_DEVICE, null) != null)
 			setFlashDevice(sPrefs.getString(KEY_FLASH_DEVICE, "/none"));
-		else switch (sBoardName)
-			{
-					// Samsung GALAXY Ace Plus (GT-S7500)
-				case "trebon":
-					setFlashDevice("/sys/devices/virtual/camera/rear/rear_flash");
-					break;
+		else setFlashDevice(getStandardFlashDevice());
+	}
 
-					// Other devices
-				default:
-					setFlashDevice(Cmd.SH.ex("busybox find /sys -group camera 2> /dev/null").getString());
-					break;
-			}
+	public static XSharedPreferences getPrefs()
+	{
+		sPrefs.reload();
+		return sPrefs;
+	}
 
+	// Retrieve board name from /system/build.prop file
+	public static String getBoardName()
+	{
+		Properties sProps = new Properties();
+		try
+		{
+			sProps.load(new FileReader(new File("/system/build.prop")));
+		}
+		catch (IOException e)
+		{e.printStackTrace();}
+		return sProps.getProperty("ro.product.board");
+	}
+
+	// Return standard flash device
+	public static String getStandardFlashDevice()
+	{
+		switch (sBoardName)
+		{
+				// Samsung GALAXY Ace Plus (GT-S7500)
+			case "trebon":
+				return "/sys/devices/virtual/camera/rear/rear_flash";
+
+				// Other devices
+			default:
+				return Cmd.SH.ex("busybox find /sys -group camera 2> /dev/null").getString();
+		}
+	}
+
+	// Return standard flash modes
+	public static List<String> getStandardFlashModes()
+	{
+		switch (sBoardName)
+		{
+			case "trebon":
+				setFlashModes(new ArrayList<String>()
+					{{
+							add(Camera.Parameters.FLASH_MODE_ON);
+							add(Camera.Parameters.FLASH_MODE_OFF);
+							add(Camera.Parameters.FLASH_MODE_AUTO);
+							add(Camera.Parameters.FLASH_MODE_TORCH);
+						}});
+				break;
+
+			default:
+				setFlashModes(new ArrayList<String>()
+					{{
+							add(Camera.Parameters.FLASH_MODE_ON);
+							add(Camera.Parameters.FLASH_MODE_OFF);
+							//add(Camera.Parameters.FLASH_MODE_AUTO);
+							add(Camera.Parameters.FLASH_MODE_TORCH);
+						}});
+				break;
+		}
+		return sFlashModes;
+	}
+
+	// Set flash device
+	public static void setFlashDevice(String sFlashDevice)
+	{
+		Flash.sFlashDevice = sFlashDevice;
+		try
+		{
+			if (sFileWriter != null) sFileWriter.close();
+			sFileWriter = null;
+		}
+		catch (Exception e)
+		{e.printStackTrace();}
 		try
 		{
 			sFileWriter = new FileWriter(sFlashDevice);
@@ -88,32 +149,6 @@ public class Flash
 			e.printStackTrace();}
 	}
 
-	public static XSharedPreferences getPrefs()
-	{
-		sPrefs.reload();
-		return sPrefs;
-	}
-
-
-	// Retrieve board name from /system/build.prop file
-	public static String getBoardName()
-	{
-		Properties sProps = new Properties();
-		try
-		{
-			sProps.load(new FileReader(new File("/system/build.prop")));
-		}
-		catch (IOException e)
-		{e.printStackTrace();}
-		return sProps.getProperty("ro.product.board");
-	}
-
-	// Set flash device
-	public static void setFlashDevice(String sFlashDevice)
-	{
-		Flash.sFlashDevice = sFlashDevice;
-	}
-
 	// Set available flash modes
 	public static void setFlashModes(List<String> mFlashModes)
 	{
@@ -127,28 +162,9 @@ public class Flash
 	 */
 	public static List<String> getSupportedFlashModes()
 	{
-		if (Flash.getPrefs().contains(Flash.KEY_SUPPORTED_FLASH_MODES))
+		if (getPrefs().contains(Flash.KEY_SUPPORTED_FLASH_MODES))
 			setFlashModes(Arrays.asList(Flash.getPrefs().getString(Flash.KEY_SUPPORTED_FLASH_MODES, "on,off,auto").replace(" ", "").split("[,]")));
-		else switch (sBoardName)
-			{
-				case "trebon":
-					setFlashModes(new ArrayList<String>()
-						{{
-								add(Camera.Parameters.FLASH_MODE_ON);
-								add(Camera.Parameters.FLASH_MODE_OFF);
-								add(Camera.Parameters.FLASH_MODE_AUTO);
-								add(Camera.Parameters.FLASH_MODE_TORCH);
-							}});
-					break;
-
-				default:
-					setFlashModes(new ArrayList<String>()
-						{{
-								add(Camera.Parameters.FLASH_MODE_ON);
-								add(Camera.Parameters.FLASH_MODE_OFF);
-							}});
-					break;
-			}
+		else getStandardFlashModes();
 		return sFlashModes;
 	}
 
@@ -176,6 +192,10 @@ public class Flash
 		if (isOn()) return;
 		try
 		{
+			sPrefs.reload();
+			if (getPrefs().getBoolean(KEY_HOOK_FLASH_DEVICE, false) && sPrefs.getString(KEY_FLASH_DEVICE, null) != null && !sPrefs.getString(KEY_FLASH_DEVICE, "").equals(sFlashDevice)) setFlashDevice(sPrefs.getString(KEY_FLASH_DEVICE, ""));
+			else if (!sStandardFlashDevice.equals(sFlashDevice)) setFlashDevice(sStandardFlashDevice);
+
 			// Write "1" to turn it on
 			sFileWriter.write(String.valueOf(1));
 			sFileWriter.flush();
@@ -193,6 +213,10 @@ public class Flash
 		if (!isOn()) return;
 		try
 		{
+			sPrefs.reload();
+			if (getPrefs().getBoolean(KEY_HOOK_FLASH_DEVICE, false) && sPrefs.getString(KEY_FLASH_DEVICE, null) != null && !sPrefs.getString(KEY_FLASH_DEVICE, "").equals(sFlashDevice)) setFlashDevice(sPrefs.getString(KEY_FLASH_DEVICE, ""));
+			else if (!sStandardFlashDevice.equals(sFlashDevice)) setFlashDevice(sStandardFlashDevice);
+
 			// Write "0" to turn it off
 			sFileWriter.write(String.valueOf(0));
 			sFileWriter.flush();
