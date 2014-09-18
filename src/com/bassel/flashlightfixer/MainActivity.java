@@ -25,6 +25,7 @@ import android.preference.CheckBoxPreference;
 import android.preference.EditTextPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
+import android.preference.PreferenceCategory;
 import android.text.InputType;
 import android.view.ViewGroup;
 import android.widget.EditText;
@@ -43,6 +44,19 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 		setPreferenceScreen(getPreferenceManager().createPreferenceScreen(this));
 
 		mPrefs = getSharedPreferences("prefs", MODE_WORLD_READABLE);
+		final PreferenceCategory mGeneral = new PreferenceCategory(this)
+		{{
+				setTitle("General");
+				setKey("key_general");
+				getPreferenceScreen().addPreference(this);
+			}};
+
+		final PreferenceCategory mInfo = new PreferenceCategory(this)
+		{{			
+				setTitle("Info");
+				setKey("key_info");
+				getPreferenceScreen().addPreference(this);
+			}};
 
 		CheckBoxPreference mHookFlash = new CheckBoxPreference(this)
 		{{
@@ -51,7 +65,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setKey(KEY_HOOK_FLASH);
 				setDefaultValue(false);
 				setOnPreferenceChangeListener(MainActivity.this);
-				getPreferenceScreen().addPreference(this);
+				mGeneral.addPreference(this);
 			}};
 
 		CheckBoxPreference mHookCameraParams = new CheckBoxPreference(this)
@@ -60,7 +74,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setSummary("If (Camera + Flash = crash!)");
 				setKey(KEY_HOOK_CAMERA_PARAMS);
 				setOnPreferenceChangeListener(MainActivity.this);
-				getPreferenceScreen().addPreference(this);
+				mGeneral.addPreference(this);
 			}};
 
 		CheckBoxPreference mHookFlashDevice = new CheckBoxPreference(this)
@@ -69,7 +83,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setSummary("Change default flash device / sysfs path");
 				setKey(KEY_HOOK_FLASH_DEVICE);
 				setOnPreferenceChangeListener(MainActivity.this);
-				getPreferenceScreen().addPreference(this);
+				mGeneral.addPreference(this);
 			}};
 
 		EditTextPreference mFlashDevice = new EditTextPreference(this)
@@ -79,7 +93,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setKey(KEY_FLASH_DEVICE);
 				setDialogMessage("Empty to reset");
 				setOnPreferenceChangeListener(MainActivity.this);
-				getPreferenceScreen().addPreference(this);
+				mGeneral.addPreference(this);
 			}};
 
 		CheckBoxPreference mHookFlashModes = new CheckBoxPreference(this)
@@ -88,7 +102,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setSummary("Change default supported flash modes");
 				setKey(KEY_HOOK_FLASH_MODES);
 				setOnPreferenceChangeListener(MainActivity.this);
-				getPreferenceScreen().addPreference(this);
+				mGeneral.addPreference(this);
 			}};
 
 		EditTextPreference mSupportedFlashModes = new EditTextPreference(this)
@@ -98,7 +112,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setKey(KEY_SUPPORTED_FLASH_MODES);
 				setOnPreferenceChangeListener(MainActivity.this);
 				setDialogMessage("Separate each mode with a comma: (on, off, auto, torch, red-eye)");
-				getPreferenceScreen().addPreference(this);
+				mGeneral.addPreference(this);
 			}};
 
 		CheckBoxPreference mHookAutoFocus = new CheckBoxPreference(this)
@@ -107,7 +121,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setSummary("Change the delay between flash and auto focus");
 				setKey(KEY_HOOK_AUTO_FOCUS);
 				setOnPreferenceChangeListener(MainActivity.this);
-				getPreferenceScreen().addPreference(this);
+				mGeneral.addPreference(this);
 			}};
 
 		EditTextPreference mAutoFocusDelay = new EditTextPreference(this)
@@ -118,7 +132,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setDialogMessage("In milliseconds (1 second = 1000 milliseconds):");
 				getEditText().setInputType(InputType.TYPE_CLASS_NUMBER);
 				setOnPreferenceChangeListener(MainActivity.this);
-				getPreferenceScreen().addPreference(this);
+				mGeneral.addPreference(this);
 			}};
 
 		CheckBoxPreference mHookInfiniteFocus = new CheckBoxPreference(this)
@@ -127,7 +141,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setSummary("Change the delay between flash and infinite focus");
 				setKey(KEY_HOOK_INFINITE_FOCUS);
 				setOnPreferenceChangeListener(MainActivity.this);
-				getPreferenceScreen().addPreference(this);
+				mGeneral.addPreference(this);
 			}};
 
 		EditTextPreference mInfiniteFocusDelay = new EditTextPreference(this)
@@ -138,7 +152,25 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setDialogMessage("In milliseconds (1 second = 1000 milliseconds):");
 				getEditText().setInputType(InputType.TYPE_CLASS_NUMBER);
 				setOnPreferenceChangeListener(MainActivity.this);
-				getPreferenceScreen().addPreference(this);
+				mGeneral.addPreference(this);
+			}};
+
+		CheckBoxPreference mHookCameraPreviewStop = new CheckBoxPreference(this)
+		{{
+				setTitle("Hook camera stopPreview");
+				setSummary("Turn flash off when camera preview stops");
+				setKey(KEY_HOOK_CAMERA_STOP_PREVIEW);
+				setOnPreferenceChangeListener(MainActivity.this);
+				mGeneral.addPreference(this);
+			}};
+
+		CheckBoxPreference mHookCameraRelease = new CheckBoxPreference(this)
+		{{
+				setTitle("Hook camera release");
+				setSummary("Turn flash off when camera is released");
+				setKey(KEY_HOOK_CAMERA_RELEASE);
+				setOnPreferenceChangeListener(MainActivity.this);
+				mGeneral.addPreference(this);
 			}};
 
 		Preference mContact = new Preference(this)
@@ -147,7 +179,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setSummary("For help and support for other devices");
 				setKey("key_contact");
 				setOnPreferenceClickListener(MainActivity.this);
-				getPreferenceScreen().addPreference(this);
+				mInfo.addPreference(this);
 			}};
 
 		Preference mUituner = new Preference(this)
@@ -156,7 +188,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setSummary("Check my other app on play store");
 				setKey("key_uituner");
 				setOnPreferenceClickListener(MainActivity.this);
-				getPreferenceScreen().addPreference(this);
+				mInfo.addPreference(this);
 			}};
 
 		Preference mDonate = new Preference(this)
@@ -165,8 +197,11 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 				setSummary("Donate if you would like to support my work");
 				setKey("key_donate");
 				setOnPreferenceClickListener(MainActivity.this);
-				getPreferenceScreen().addPreference(this);
+				mInfo.addPreference(this);
 			}};
+
+		//getPreferenceScreen().addPreference(mGeneral);
+		//getPreferenceScreen().addPreference(mInfo);
 
 		mHookFlashDevice.setDependency(KEY_HOOK_FLASH);
 		mFlashDevice.setDependency(KEY_HOOK_FLASH_DEVICE);
@@ -174,7 +209,7 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 		mSupportedFlashModes.setDependency(KEY_HOOK_FLASH_MODES);
 
 		mAutoFocusDelay.setDependency(KEY_HOOK_AUTO_FOCUS);
-		mHookInfiniteFocus.setDependency(KEY_HOOK_FLASH);
+		//mHookInfiniteFocus.setDependency(KEY_HOOK_FLASH);
 		mInfiniteFocusDelay.setDependency(KEY_HOOK_INFINITE_FOCUS);
 	}
 

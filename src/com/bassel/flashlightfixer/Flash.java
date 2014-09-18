@@ -32,6 +32,7 @@ import java.util.Properties;
 
 public class Flash implements Constants
 {
+	private static Camera sCam;
 	private static XSharedPreferences sPrefs;
 	private static String sFlashDevice, sStandardFlashDevice, sFlashMode, sBoardName;
 	private static List<String> sFlashModes, sStandardFlashModes;
@@ -40,6 +41,7 @@ public class Flash implements Constants
 
 	static
 	{
+		sCam = null;
 		if  (BuildConfig.DEBUG) XposedBridge.log("Static initialization");
 		// Get shared preferences
 		sPrefs = new XSharedPreferences(Flash.class.getPackage().getName(), "prefs");
@@ -157,7 +159,7 @@ public class Flash implements Constants
 
 	/*
 	 * This method will be called when a camera or flashlight app tries to get supported flash modes
-	 * Since it's not likely for tge android.hardware.Camera$Parameters getSupportedFlashModes to return the right modes
+	 * Since it's not likely for the android.hardware.Camera$Parameters getSupportedFlashModes to return the right modes
 	 * we have to do it ourselves!
 	 */
 	public static List<String> getSupportedFlashModes()
@@ -187,46 +189,82 @@ public class Flash implements Constants
 	}
 
 	// Turn flash on ( the same goes to off() )
-	static void on()
+	static void on(Camera sCamera)
 	{
 		if (isOn()) return;
-		try
+		sPrefs.reload();
+
+		if (getPrefs().getBoolean(KEY_HOOK_FLASH, false))
+			try
+			{
+				if (sPrefs.getString(KEY_FLASH_DEVICE, null) != null && !sPrefs.getString(KEY_FLASH_DEVICE, "").equals(sFlashDevice)) setFlashDevice(sPrefs.getString(KEY_FLASH_DEVICE, ""));
+				else if (!sStandardFlashDevice.equals(sFlashDevice)) setFlashDevice(sStandardFlashDevice);
+
+				// Write "1" to turn it on
+				sFileWriter.write(String.valueOf(1));
+				sFileWriter.flush();
+
+				// Let's do this to keep track of flash state
+				sOn = true;
+			}
+			catch (IOException e)
+			{fixGroup();
+				e.printStackTrace();}
+		else if (sCamera != null)
 		{
-			sPrefs.reload();
-			if (getPrefs().getBoolean(KEY_HOOK_FLASH_DEVICE, false) && sPrefs.getString(KEY_FLASH_DEVICE, null) != null && !sPrefs.getString(KEY_FLASH_DEVICE, "").equals(sFlashDevice)) setFlashDevice(sPrefs.getString(KEY_FLASH_DEVICE, ""));
-			else if (!sStandardFlashDevice.equals(sFlashDevice)) setFlashDevice(sStandardFlashDevice);
+			if (sCam == null) Flash.sCam = sCamera;
+			try
+			{
+				Camera.Parameters sParams = sCam.getParameters();
+				sParams.setFlashMode(sParams.FLASH_MODE_ON);
+				sCam.setParameters(sParams);
+				
+				if  (BuildConfig.DEBUG) XposedBridge.log("Camera interface on");
 
-			// Write "1" to turn it on
-			sFileWriter.write(String.valueOf(1));
-			sFileWriter.flush();
-
-			// Let's do this to keep track of flash state
-			sOn = true;
+				sOn = true;
+			}
+			catch (Exception e)
+			{e.printStackTrace();}
 		}
-		catch (IOException e)
-		{fixGroup();
-			e.printStackTrace();}
 	}
 
-	static void off()
+	static void off(Camera sCamera)
 	{
 		if (!isOn()) return;
-		try
+		sPrefs.reload();
+
+		if (getPrefs().getBoolean(KEY_HOOK_FLASH, false))
+			try
+			{
+				if (sPrefs.getString(KEY_FLASH_DEVICE, null) != null && !sPrefs.getString(KEY_FLASH_DEVICE, "").equals(sFlashDevice)) setFlashDevice(sPrefs.getString(KEY_FLASH_DEVICE, ""));
+				else if (!sStandardFlashDevice.equals(sFlashDevice)) setFlashDevice(sStandardFlashDevice);
+
+				// Write "0" to turn it on
+				sFileWriter.write(String.valueOf(0));
+				sFileWriter.flush();
+
+				// Let's do this to keep track of flash state
+				sOn = false;
+			}
+			catch (IOException e)
+			{fixGroup();
+				e.printStackTrace();}
+		else if (sCam != null)
 		{
-			sPrefs.reload();
-			if (getPrefs().getBoolean(KEY_HOOK_FLASH_DEVICE, false) && sPrefs.getString(KEY_FLASH_DEVICE, null) != null && !sPrefs.getString(KEY_FLASH_DEVICE, "").equals(sFlashDevice)) setFlashDevice(sPrefs.getString(KEY_FLASH_DEVICE, ""));
-			else if (!sStandardFlashDevice.equals(sFlashDevice)) setFlashDevice(sStandardFlashDevice);
+			if (sCam == null) sCam = sCamera;
+			try
+			{
+				Camera.Parameters sParams = sCam.getParameters();
+				sParams.setFlashMode(sParams.FLASH_MODE_OFF);
+				sCam.setParameters(sParams);
 
-			// Write "0" to turn it off
-			sFileWriter.write(String.valueOf(0));
-			sFileWriter.flush();
-
-			// Let's do this to keep track of flash state
-			sOn = false;
+				if  (BuildConfig.DEBUG) XposedBridge.log("Camera interface off");
+				
+				sOn = false;
+			}
+			catch (Exception e)
+			{e.printStackTrace();}
 		}
-		catch (IOException e)
-		{fixGroup();
-			e.printStackTrace();}
 	}
 
 	// Return current flash mode set by the camera or flashlight app
@@ -235,6 +273,12 @@ public class Flash implements Constants
 		if (sFlashMode == null) return "off";
 		return sFlashMode;
 	}
+	
+	// Keep track of flash mode
+	static void changeFlashMode(final String mode)
+	{
+		sFlashMode = mode;
+	}
 
 	// This will be called when an app tries to change flash mode
 	static void setFlashMode(final String mode)
@@ -242,19 +286,19 @@ public class Flash implements Constants
 		switch (mode)
 		{
 			case Camera.Parameters.FLASH_MODE_ON:
-				on();
+				on(sCam);
 				break;
 
 			case Camera.Parameters.FLASH_MODE_OFF:
-				off();
+				off(sCam);
 				break;
 
 			case Camera.Parameters.FLASH_MODE_AUTO:
-				off();
+				off(sCam);
 				break;
 
 			case Camera.Parameters.FLASH_MODE_TORCH:
-				on();
+				on(sCam);
 				break;
 		}
 

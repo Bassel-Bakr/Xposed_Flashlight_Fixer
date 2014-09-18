@@ -18,21 +18,22 @@ package com.bassel.flashlightfixer;
 
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
-import de.robv.android.xposed.IXposedHookZygoteInit;
+import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
+import de.robv.android.xposed.callbacks.XC_LoadPackage;
 import java.lang.reflect.InvocationTargetException;
 
-public class XposedMod implements Constants, IXposedHookZygoteInit
+public class XposedMod implements Constants, IXposedHookLoadPackage
 {
 
 	@Override
-	public void initZygote(IXposedHookZygoteInit.StartupParam startupParam) throws Throwable
+	public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable
 	{
 		// Reload our preferences
-		Flash.getPrefs().reload();
+		// Flash.getPrefs().reload();
 
 		// Called when an app checks for flashlight availability
 		XposedHelpers.findAndHookMethod("android.app.ApplicationPackageManager", null, "hasSystemFeature", String.class, new XC_MethodReplacement()
@@ -62,18 +63,15 @@ public class XposedMod implements Constants, IXposedHookZygoteInit
 			}
 		);
 
-		// Called when an app checks for available flash modes
+		// Called when an app attempts to change camera parameters
 		XposedHelpers.findAndHookMethod("android.hardware.Camera", null, "setParameters", Camera.Parameters.class, new XC_MethodReplacement()
 			{
 				@Override
 				protected Object replaceHookedMethod(XC_MethodHook.MethodHookParam param) throws Throwable
 				{
-					// Remove flash-mode if it causes force close
+					// Remove flash-mode if it crash our device
 					if (Flash.getPrefs().getBoolean(KEY_HOOK_CAMERA_PARAMS, false))
-					{
 						((Camera.Parameters) param.args[0]).remove("flash-mode");
-					}
-
 					// No problems! Then let's not temper with the natural flow
 					return XposedBridge.invokeOriginalMethod(param.method, param.thisObject, param.args);	
 				}
@@ -86,10 +84,10 @@ public class XposedMod implements Constants, IXposedHookZygoteInit
 				@Override
 				protected Object replaceHookedMethod(MethodHookParam param) throws IllegalAccessException, IllegalArgumentException, NullPointerException, InvocationTargetException
 				{
-					if (Flash.getPrefs().getBoolean(KEY_HOOK_FLASH, false) && ((String)param.args[0]).equals("flash-mode"))
-					{
-						Flash.setFlashMode((String) param.args[1]);
-					}
+					if (((String)param.args[0]).equals("flash-mode"))
+						if (Flash.getPrefs().getBoolean(KEY_HOOK_FLASH, false))
+							Flash.setFlashMode((String) param.args[1]);
+						else Flash.changeFlashMode((String) param.args[1]);
 					return XposedBridge.invokeOriginalMethod(param.method, param.thisObject, param.args);
 				}
 			}
@@ -102,17 +100,18 @@ public class XposedMod implements Constants, IXposedHookZygoteInit
 				protected Object replaceHookedMethod(MethodHookParam param) throws IllegalAccessException, IllegalArgumentException, NullPointerException, InvocationTargetException
 				{
 					// Turn flash on if we're using auto-flash mode
-					if (!Flash.isAuto()) return XposedBridge.invokeOriginalMethod(param.method, param.thisObject, param.args);
-
-					if (Flash.getPrefs().getBoolean(KEY_HOOK_FLASH, false)) Flash.on();
 					if (Flash.getPrefs().getBoolean(KEY_HOOK_AUTO_FOCUS, false))
-						try
-						{
-							Thread.sleep(Integer.valueOf(Flash.getPrefs().getString(KEY_AUTO_FOCUS_DELAY, "0")));
-						}
-						catch (InterruptedException e)
-						{e.printStackTrace();}
-
+					{
+						if (Flash.isAuto() && !Flash.isOn())
+							try
+							{
+								Flash.on((Camera)param.thisObject);
+								
+								Thread.sleep(Integer.valueOf(Flash.getPrefs().getString(KEY_AUTO_FOCUS_DELAY, "0")));
+							}
+							catch (InterruptedException e)
+							{e.printStackTrace();}
+					}
 					return XposedBridge.invokeOriginalMethod(param.method, param.thisObject, param.args);
 				}
 			}
@@ -125,7 +124,8 @@ public class XposedMod implements Constants, IXposedHookZygoteInit
 				protected void afterHookedMethod(MethodHookParam param)
 				{
 					// Turn flash off if we're using auto-flash mode
-					if (Flash.getPrefs().getBoolean(KEY_HOOK_FLASH_DEVICE, false) && Flash.isAuto()) Flash.off();
+					if (Flash.getPrefs().getBoolean(KEY_HOOK_FLASH, false) && Flash.isAuto() && Flash.isOn())
+						Flash.off((Camera)param.thisObject);
 				}
 			}
 		);
@@ -137,29 +137,32 @@ public class XposedMod implements Constants, IXposedHookZygoteInit
 				protected Object replaceHookedMethod(MethodHookParam param) throws IllegalAccessException, IllegalArgumentException, NullPointerException, InvocationTargetException
 				{
 					// If auto-focus is off, turn flash on and let the camera adapt to flashlight for 2.5 seconds
-					if (Flash.getPrefs().getBoolean(KEY_HOOK_INFINITE_FOCUS, false) && Flash.isAuto() && !Flash.isOn())
+					if (Flash.getPrefs().getBoolean(KEY_HOOK_INFINITE_FOCUS, false))
 					{
-						if(Flash.getPrefs().getBoolean(KEY_HOOK_FLASH, false)) Flash.on();
-						try
-						{
-							Thread.sleep(Integer.valueOf(Flash.getPrefs().getString(Flash.KEY_INFINITE_FOCUS_DELAY, "0")));
-						}
-						catch (InterruptedException e)
-						{e.printStackTrace();}
+						if (Flash.isAuto() && !Flash.isOn())
+							try
+							{
+								Flash.on((Camera)param.thisObject);
+
+								Thread.sleep(Integer.valueOf(Flash.getPrefs().getString(Flash.KEY_INFINITE_FOCUS_DELAY, "0")));
+							}
+							catch (InterruptedException e)
+							{e.printStackTrace();}
 					}
 					return XposedBridge.invokeOriginalMethod(param.method, param.thisObject, param.args);
 				}
 			}
 		);
 
-		// Called when camera preview starts and when a picture is taken an saved
+		// Called when camera preview starts and when a picture is taken and saved
 		XposedHelpers.findAndHookMethod("android.hardware.Camera", null, "startPreview", new XC_MethodReplacement()
 			{
 				@Override
 				protected Object replaceHookedMethod(MethodHookParam param) throws IllegalAccessException, IllegalArgumentException, NullPointerException, InvocationTargetException
 				{
 					// Save your battery power for later use
-					if (Flash.getPrefs().getBoolean(KEY_HOOK_FLASH, false) && Flash.isAuto()) Flash.off();
+					if (Flash.getPrefs().getBoolean(KEY_HOOK_FLASH, false) && Flash.isAuto() && Flash.isOn())
+						Flash.off((Camera)param.thisObject);
 					return XposedBridge.invokeOriginalMethod(param.method, param.thisObject, param.args);
 				}					
 			}
@@ -172,7 +175,8 @@ public class XposedMod implements Constants, IXposedHookZygoteInit
 				protected Object replaceHookedMethod(MethodHookParam param) throws IllegalAccessException, IllegalArgumentException, NullPointerException, InvocationTargetException
 				{
 					// We are doing nothing, let's save our battery power for later use
-					if (Flash.getPrefs().getBoolean(KEY_HOOK_FLASH, false)) Flash.off();
+					if (Flash.getPrefs().getBoolean(KEY_HOOK_CAMERA_STOP_PREVIEW, false) && Flash.isAuto() && Flash.isOn())
+						Flash.off((Camera)param.thisObject);
 					return XposedBridge.invokeOriginalMethod(param.method, param.thisObject, param.args);
 				}					
 			}
@@ -185,7 +189,8 @@ public class XposedMod implements Constants, IXposedHookZygoteInit
 				protected Object replaceHookedMethod(XC_MethodHook.MethodHookParam param) throws IllegalAccessException, IllegalArgumentException, NullPointerException, InvocationTargetException
 				{
 					// Obviously our camera or flashlight app isn't active, save your battery power for later use
-					if (Flash.getPrefs().getBoolean(KEY_HOOK_FLASH, false))Flash.off();
+					if (Flash.getPrefs().getBoolean(KEY_HOOK_CAMERA_RELEASE, false))
+						Flash.off((Camera)param.thisObject);
 					return XposedBridge.invokeOriginalMethod(param.method, param.thisObject, param.args);
 				}
 			}
