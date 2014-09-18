@@ -102,10 +102,10 @@ public class XposedMod implements Constants, IXposedHookLoadPackage
 					// Turn flash on if we're using auto-flash mode
 					if (Flash.getPrefs().getBoolean(KEY_HOOK_AUTO_FOCUS, false))
 					{
-						if (Flash.isAuto() && !Flash.isOn())
+						if (Flash.isAuto())
 							try
 							{
-								Flash.on((Camera)param.thisObject);
+								if (!Flash.isOn()) Flash.on((Camera)param.thisObject);
 								
 								Thread.sleep(Integer.valueOf(Flash.getPrefs().getString(KEY_AUTO_FOCUS_DELAY, "0")));
 							}
@@ -139,10 +139,10 @@ public class XposedMod implements Constants, IXposedHookLoadPackage
 					// If auto-focus is off, turn flash on and let the camera adapt to flashlight for 2.5 seconds
 					if (Flash.getPrefs().getBoolean(KEY_HOOK_INFINITE_FOCUS, false))
 					{
-						if (Flash.isAuto() && !Flash.isOn())
+						if (Flash.isAuto())
 							try
 							{
-								Flash.on((Camera)param.thisObject);
+								if (!Flash.isOn()) Flash.on((Camera)param.thisObject);
 
 								Thread.sleep(Integer.valueOf(Flash.getPrefs().getString(Flash.KEY_INFINITE_FOCUS_DELAY, "0")));
 							}
