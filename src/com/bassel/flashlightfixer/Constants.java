@@ -25,9 +25,9 @@ public interface Constants
 	KEY_HOOK_FLASH_MODES = "key_hook_flash_modes",
 	KEY_HOOK_AUTO_FOCUS = "key_hook_auto_focus",
 	KEY_HOOK_INFINITE_FOCUS = "key_hook_infinite_focua",
-	KEY_HOOK_CAMERA_START_PREVIEW = "key_hook_flash",
+	KEY_HOOK_CAMERA_START_PREVIEW = "key_hook_camera_start_preview",
 	KEY_HOOK_CAMERA_PARAMS = "key_hook_camera_params",
-	KEY_HOOK_CAMERA_STOP_PREVIEW = "key_hook_flash",
+	KEY_HOOK_CAMERA_STOP_PREVIEW = "key_hook_camera_stop_preview",
 	KEY_HOOK_CAMERA_RELEASE = "key_hook_camera_release",
 
 	// Strings

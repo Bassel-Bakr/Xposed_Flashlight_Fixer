@@ -16,7 +16,6 @@
 
 package com.bassel.flashlightfixer;
 
-import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
@@ -36,18 +35,18 @@ public class XposedMod implements Constants, IXposedHookLoadPackage
 		// Flash.getPrefs().reload();
 
 		// Called when an app checks for flashlight availability
-		XposedHelpers.findAndHookMethod("android.app.ApplicationPackageManager", null, "hasSystemFeature", String.class, new XC_MethodReplacement()
-			{
-				@Override
-				protected Object replaceHookedMethod(XC_MethodHook.MethodHookParam param) throws Throwable
-				{
-					// Is it flashlight that we're checking?
-					if (((String) param.args[0]).equals(PackageManager.FEATURE_CAMERA_FLASH)) return true;
-					// No flashlight! then let's not temper with the natural flow
-					return XposedBridge.invokeOriginalMethod(param.method, param.thisObject, param.args);
-				}
-			}
-		);
+		/*		XposedHelpers.findAndHookMethod("android.app.ApplicationPackageManager", null, "hasSystemFeature", String.class, new XC_MethodReplacement()
+		 {
+		 @Override
+		 protected Object replaceHookedMethod(XC_MethodHook.MethodHookParam param) throws Throwable
+		 {
+		 // Is it flashlight that we're checking?
+		 if (((String) param.args[0]).equals(PackageManager.FEATURE_CAMERA_FLASH)) return true;
+		 // No flashlight! then let's not temper with the natural flow
+		 return XposedBridge.invokeOriginalMethod(param.method, param.thisObject, param.args);
+		 }
+		 }
+		 );*/
 
 		// Called when an app checks for available flash modes
 		XposedHelpers.findAndHookMethod("android.hardware.Camera$Parameters", null, "getSupportedFlashModes", new XC_MethodReplacement()
@@ -106,7 +105,7 @@ public class XposedMod implements Constants, IXposedHookLoadPackage
 							try
 							{
 								if (!Flash.isOn()) Flash.on((Camera)param.thisObject);
-								
+
 								Thread.sleep(Integer.valueOf(Flash.getPrefs().getString(KEY_AUTO_FOCUS_DELAY, "0")));
 							}
 							catch (InterruptedException e)
