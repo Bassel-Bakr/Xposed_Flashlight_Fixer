@@ -41,7 +41,6 @@ public class MainActivity extends PreferenceActivity implements Constants, Prefe
 	{
 		// TODO: Implement this method
 		super.onCreate(savedInstanceState);
-		//setTheme(android.R.style.Theme.Holo);
 		
 		setPreferenceScreen(getPreferenceManager().createPreferenceScreen(this));
 
